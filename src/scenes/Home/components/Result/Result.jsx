@@ -8,6 +8,7 @@ import { markdown } from 'services'
 import Card, { CardTitle, CardText } from 'components/Card'
 import Flags from 'components/Flags'
 import Tags from 'components/Tags'
+import { Button } from 'components'
 
 import './Result.css'
 
@@ -24,20 +25,66 @@ class Result extends Component {
     const { node } = this.props
     const { collapsed } = this.state
 
+    var titlebis;
+    if (node.question.titleTranslations[0]) {
+      titlebis = node.question.titleTranslations[0].text
+    } else {
+      titlebis = node.question.title;
+    }
+
+    var contentbis;
+    if (node.answer != null) {
+      if (node.answer.contentTranslations[0]) {
+        contentbis = node.answer.contentTranslations[0].text;
+      } else {
+        contentbis = node.answer.content;
+      }
+    }
+
+    
+    var buttonTranslation;
+    buttonTranslation = <Button
+      style = {{ "textAlign" : 'right'}}
+      icon="language"
+      data-tooltip="Translated by Google Translate"
+      round
+      disabled
+      ></Button>
+
+    var messageTranslationTitle;
+    var messageTranslationAnswer
+    if (node.answer != null && contentbis != node.answer.content) {
+      if (node.question.title != titlebis) {
+        messageTranslationTitle = buttonTranslation
+        messageTranslationAnswer = buttonTranslation
+      }
+      else {
+        messageTranslationAnswer = buttonTranslation
+      }
+    } else {
+      if (node.answer == null || node.answer.content == contentbis) {
+        if (node.question.title != titlebis) {
+          messageTranslationTitle = buttonTranslation
+        }
+      }
+    }
+
+
     return (
       <Card className="result">
         <CardTitle onClick={() => this.setState({ collapsed: !collapsed })}>
           <div className="grow">
             {!node.highlights ? (
-              <h1>{markdown.title(node.question.title)}</h1>
+              <h1>{markdown.title(titlebis)}</h1>
             ) : (
-              <h1
-                dangerouslySetInnerHTML={{
-                  __html: markdown.title(node.highlights.question)
-                }}
-              />
-            )}
+                <h1
+                  dangerouslySetInnerHTML={{
+                    __html: markdown.title(node.highlights.question)
+                  }}
+                />
+              )}
             {node.tags.length > 0 && <Tags tags={node.tags} />}
+            {messageTranslationTitle}
           </div>
           <Flags node={node} withLabels={false} />
           <Link
@@ -53,19 +100,21 @@ class Result extends Component {
         <CardText collapsed={collapsed}>
           {node.answer ? (
             markdown.html(
-              node.highlights ? node.highlights.answer : node.answer.content
-            )
+              node.highlights ? node.highlights.answer : contentbis)
           ) : (
-            <p style={{ textAlign: 'center' }}>
-              <i>No answer yet...</i>
-            </p>
-          )}
+              <p style={{ textAlign: 'center' }}>
+                <i>No answer yet...</i>
+              </p>
+            )}
+          <div className="translationMessage"
+            style={{ "textAlign": 'right' }}>
+            {messageTranslationAnswer}
+          </div>
         </CardText>
       </Card>
     )
   }
 }
-
 Result.propTypes = {
   node: PropTypes.object.isRequired,
   collapsed: PropTypes.bool

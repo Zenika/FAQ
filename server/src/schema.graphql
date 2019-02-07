@@ -72,4 +72,6 @@ type User {
   email: String
 
   picture: String
+  locale: String
 }
+

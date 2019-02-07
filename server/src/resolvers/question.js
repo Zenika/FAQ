@@ -15,6 +15,26 @@ module.exports = {
     createQuestionAndTags: async (_, { title, tags }, ctx, info) => {
       const tagList = confTagList(ctx)
 
+      const { Translate } = require('@google-cloud/translate');
+
+      const translate = new Translate({
+      });
+
+      const titleTab = [];
+
+      const textToTranslate = title;
+
+      const targeten = 'en';
+      const targetfr = 'fr';
+
+      const resultsen = await translate.translate(textToTranslate, targeten)
+      const translationen = resultsen[0];
+      titleTab.push({ text: translationen, lang: targeten });
+
+      const resultsfr = await translate.translate(textToTranslate, targetfr)
+      const translationfr = resultsfr[0];
+      titleTab.push({ text: translationfr, lang: targetfr });
+
       const node = await ctx.prisma.mutation.createZNode(
         {
           data: {
@@ -22,7 +42,10 @@ module.exports = {
               create: {
                 title,
                 slug: slugify(title),
-                user: { connect: { id: ctxUser(ctx).id } }
+                user: { connect: { id: ctxUser(ctx).id } },
+                titleTranslations: {
+                  create: titleTab
+                }
               }
             },
             tags: {
@@ -68,6 +91,26 @@ module.exports = {
     },
     updateQuestionAndTags: async (_, { id, title, tags }, ctx, info) => {
       const tagList = confTagList(ctx)
+
+      const { Translate } = require('@google-cloud/translate');
+
+      const translate = new Translate({
+      });
+
+      const titleTab = [];
+
+      const textToTranslate = title;
+
+      const targeten = 'en';
+      const targetfr = 'fr';
+
+      const resultsen = await translate.translate(textToTranslate, targeten)
+      const translationen = resultsen[0];
+      titleTab.push({ text: translationen, lang: targeten });
+
+      const resultsfr = await translate.translate(textToTranslate, targetfr)
+      const translationfr = resultsfr[0];
+      titleTab.push({ text: translationfr, lang: targetfr });
 
       const node = (await ctx.prisma.query.question(
         { where: { id } },
@@ -126,11 +169,24 @@ module.exports = {
         meta.title = title
       }
 
+      const selectedQuestion = await ctx.prisma.query.question({
+        where: { id: id }
+      }, `{ titleTranslations { id } }`)
+
+      const oldTitleTranslationsIds = [];
+      for (let i = 0; i < selectedQuestion.titleTranslations.length; i++) {
+        oldTitleTranslationsIds.push({ id: selectedQuestion.titleTranslations[i].id })
+      }
+
       await ctx.prisma.mutation.updateQuestion({
         where: { id },
         data: {
           title,
-          slug: slugify(title)
+          slug: slugify(title),
+          titleTranslations: {
+            delete: oldTitleTranslationsIds,
+            create: titleTab
+          }
         }
       })
 

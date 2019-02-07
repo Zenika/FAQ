@@ -7,6 +7,8 @@ export const searchNodes = gql`
     $flags: [String!]
     $first: Int!
     $skip: Int!
+    $locale: String!
+    
   ) {
     search(
       text: $text
@@ -21,12 +23,18 @@ export const searchNodes = gql`
         question {
           id
           title
+          titleTranslations (where : {lang: $locale}){
+            text 
+          }
           slug
           createdAt
         }
         answer {
           id
           content
+          contentTranslations (where : {lang: $locale}){
+            text
+          }
         }
         flags {
           id
