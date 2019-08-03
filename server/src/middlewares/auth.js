@@ -2,14 +2,12 @@ const jwt = require('express-jwt')
 const jwksRsa = require('jwks-rsa')
 const { UnauthorizedError } = jwt
 
-const checkJwt = (req, res, next, prisma) => {
-  const {
-    service: { name, stage },
-    configuration: conf
-  } = prisma._meta
+const checkJwt = async (req, res, next, multiTenant) => {
+  const photon = await multiTenant.current(req)
+  const { name, configuration: conf } = photon._meta
 
   if (!conf.auth0Domain || !conf.auth0ClientId) {
-    throw new Error(`No auth0 configuration found for service ${name}/${stage}!`)
+    throw new Error(`No auth0 configuration found for tenant ${name}!`)
   }
 
   const [authType, token] = (req.headers.authorization || '').split(' ')
@@ -18,21 +16,9 @@ const checkJwt = (req, res, next, prisma) => {
   let getUser = null
 
   const userQuery = where =>
-    prisma.query.user(
-      {
-        where
-      },
-      `{
-        id
-        auth0Id
-        key
-        admin
-        name
-        email
-        picture
-        locale
-      }`
-    )
+    photon.users.findOne({
+      where
+    })
 
   if (authType === 'Bearer') {
     // Auth0 Authentication
@@ -49,10 +35,13 @@ const checkJwt = (req, res, next, prisma) => {
       algorithms: ['RS256']
     }
 
+    // TODO: Lazily get the user instead of at every requests
     getUser = async err => {
       if (err) return next(err)
 
-      const user = await userQuery({ auth0Id: req.jwtCheckResult.sub.split('|')[1] })
+      const user = await userQuery({ auth0Id: req.jwtCheckResult.sub.split('|')[1] }).catch(
+        () => ({})
+      )
       req.user = { token: req.jwtCheckResult, ...user }
       next()
     }
@@ -70,10 +59,12 @@ const checkJwt = (req, res, next, prisma) => {
             new UnauthorizedError('wrong-faq-tenant', 'Wrong faq-tenant found in JWT Payload')
           )
         }
-        userQuery({ id: payload['userId'] }).then(user => {
-          req.user = user
-          done(null, user.key)
-        })
+        userQuery({ id: payload['userId'] })
+          .then(user => {
+            req.user = user
+            done(null, user.key)
+          })
+          .catch(e => done(e))
       },
       algorithms: ['HS256']
     }
@@ -96,12 +87,14 @@ const checkJwt = (req, res, next, prisma) => {
   })(req, res, getUser)
 }
 
-const checkDomain = (req, res, next, prisma) => {
+const checkDomain = async (req, res, next, multiTenant) => {
+  const photon = await multiTenant.current(req)
+
   const email = req.user.email || req.user.token.email
 
   const userDomain = email.split('@').pop()
 
-  const domains = prisma._meta.configuration.authorizedDomains
+  const domains = photon._meta.configuration.authorizedDomains
 
   if (!domains || domains.length === 0) return next()
 

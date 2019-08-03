@@ -12,29 +12,28 @@
     "isomorphic-fetch": "^2.2.1",
     "jsonwebtoken": "^8.3.0",
     "jwks-rsa": "^1.3.0",
-    "mjml": "^4.3.1",
+    "mjml": "^4.4.1",
     "node-fetch": "^2.2.0",
     "path": "^0.12.7",
-    "prisma": "^1.26.6",
-    "prisma-binding": "^2.3.2",
-    "prisma-multi-tenant": "^1.0.0",
+    "prisma-multi-tenant": "github:errorname/prisma-multi-tenant#alpha",
+    "prisma2": "^2.0.0-preview-2",
     "showdown": "^1.8.6",
     "showdown-xss-filter": "^0.2.0",
     "slugify": "^1.3.1"
   },
   "scripts": {
+    "postinstall": "prisma-multi-tenant generate",
     "start": "dotenv -e .env.local node src/index.js",
     "dev": "dotenv -e .env.local nodemon src/index.js",
-    "deploy": "cd scripts/prisma_deploy_all && dotenv -e ../../.env.local node index.js",
-    "new_service": "cd scripts/prisma_new_service && dotenv -e ../../.env.local node index.js",
-    "generate_schema": "prisma generate",
     "lint": "eslint src --ext js",
     "lint:fix": "npm run lint -- --fix",
     "prettier": "prettier src/**/*",
     "prettier:write": "npm run prettier -- --write",
     "prettier:check": "npm run prettier -- --check",
-    "local_containers": "cd prisma/ && dotenv -e ../.env.local docker-compose up",
-    "token": "dotenv -e .env.local bash scripts/prisma_token/token.sh"
+    "new_service": "dotenv -e .env.local node scripts/prisma_new_service/index.js",
+    "delete_service": "dotenv -e .env.local prisma-multi-tenant delete",
+    "deploy": "dotenv -e .env.local node scripts/prisma_deploy_all/index.js",
+    "bootstrap": "npm run new_service -- -- --name=default\\\\\\$default --provider=sqlite --url=file:tenants/default\\\\\\$default.db"
   },
   "husky": {
     "hooks": {
